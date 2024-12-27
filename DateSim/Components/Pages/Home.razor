@@ -9,7 +9,7 @@
 <div class="filter-container">
     <label for="interest-filter">Фильтровать по интересам:</label>
     <select id="interest-filter" @onchange="FilterProfiles">
-        <option value="all">Все интересы</option>
+        <option value="all">Выберите интерес</option>
         @foreach (var interest in GetAllInterests())
         {
             <option value="@interest">@interest</option>
