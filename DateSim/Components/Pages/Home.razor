@@ -6,9 +6,16 @@
 <h1 class="title">Симулятор свиданий</h1>
 <h3>Список Профилей</h3>
 
+<!-- Поиск по имени -->
+<div class="search-container">
+    <label for="search-name">Поиск по имени:</label>
+    <input id="search-name" class="form-control" @bind:get="SearchQuery" @bind:set="OnSearchQueryChanged" @bind:event="oninput" placeholder="Введите имя" />
+</div>
+
+<!-- Фильтр по интересам -->
 <div class="filter-container">
     <label for="interest-filter">Фильтровать по интересам:</label>
-    <select id="interest-filter" @onchange="FilterProfiles">
+    <select id="interest-filter" @onchange="async (e) => await FilterProfiles(e)">
         <option value="all">Выберите интерес</option>
         @foreach (var interest in GetAllInterests())
         {
@@ -49,7 +56,7 @@
 }
 else
 {
-    <div class="alert alert-info">Профили с выбранным интересом не найдены!</div>
+    <div class="alert alert-info">Профили не найдены!</div>
 }
 
 @code
@@ -58,31 +65,57 @@ else
     private List<Profile> FilteredProfiles { get; set; } = new List<Profile>();
     private IEnumerable<Profile> Profiles = new List<Profile>();
     private string CurrentFilter { get; set; } = "all";
+    private string SearchQuery { get; set; } = string.Empty;
 
     protected override void OnInitialized()
     {
         FilteredProfiles = Profiles.ToList(); // Инициализируем FilteredProfiles
     }
+
     protected override async Task OnInitializedAsync()
     {
         Profiles = await ProfileService.GetProfilesAsync();
-       
+        FilteredProfiles = Profiles.ToList(); // Обновляем FilteredProfiles после загрузки данных
     }
 
-    // Фильтрация профилей
-    private void FilterProfiles(ChangeEventArgs e)
+    // Поиск профилей по имени
+    private async Task SearchProfiles()
+    {
+        if (string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            // Если поисковый запрос пуст, показываем все профили
+            FilteredProfiles = await ProfileService.FilterProfilesAsync(profile => true);
+        }
+        else
+        {
+            // Фильтруем профили по имени (игнорируем регистр и пробелы)
+            var trimmedQuery = SearchQuery.Trim();
+            FilteredProfiles = await ProfileService.FilterProfilesAsync(profile =>
+                profile.Name.Trim().Contains(trimmedQuery, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    // Обработка изменения поискового запроса
+    private async Task OnSearchQueryChanged(string value)
+    {
+        SearchQuery = value; // Обновляем SearchQuery
+        await SearchProfiles(); // Выполняем поиск
+    }
+
+    // Фильтрация профилей по интересам
+    private async Task FilterProfiles(ChangeEventArgs e)
     {
         var selectedInterest = e.Value?.ToString();
 
         if (selectedInterest == "all")
         {
-            FilteredProfiles = Profiles.ToList(); // Показываем все профили
+            // Если выбран "all", показываем все профили
+            FilteredProfiles = await ProfileService.GetProfilesAsync();
         }
         else
         {
-            FilteredProfiles = Profiles
-                .Where(profile => profile.Interests.Any(interest => interest.SelectedInterestString == selectedInterest))
-                .ToList();
+            // Фильтруем профили по интересам
+            FilteredProfiles = await ProfileService.SearchProfilesByInterestAsync(selectedInterest);
         }
     }
 
@@ -99,7 +132,5 @@ else
                 .Where(i => !string.IsNullOrEmpty(i.SelectedInterestString))
                 .Select(i => i.SelectedInterestString!))
             .Distinct();
-
     }
-    
 }

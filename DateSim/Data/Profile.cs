@@ -15,8 +15,8 @@ public enum Gender
 public class Profile
 {
 	public int Id { get; set; } // Уникальный идентификатор профиля
-    public string? Name { get; set; } // Имя профиля
-    public int? Age { get; set; } // Возраст
+    public string Name { get; set; } // Имя профиля
+    public int? Age { get; set; } // Возрас
     public Gender Gender { get; set; } // Пол
     public string? Description { get; set; } // Описание
     public string? ImageUrl { get; set; } // Ссылка на изображение

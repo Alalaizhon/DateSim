@@ -2,10 +2,16 @@
 @rendermode InteractiveServer
 @inject NavigationManager NavigationManager
 @inject ProfileService ProfileService
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Профиль</PageTitle>
 
 <h1>Добавить профиль</h1>
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger">@ErrorMessage</div>
+}
 
 <div class="profile-form">
     <div class="form-group">
@@ -36,14 +42,63 @@
         <input id="Interests" class="form-control" @bind="InterestsInput" />
     </div>
     <button class="btn btn-primary" @onclick="AddProfile">Добавить</button>
+    @if (IsProfileCreated)
+    {
+        <button class="btn btn-secondary" @onclick="EditProfile">Редактировать</button>
+        <button class="btn btn-danger" @onclick="DeleteProfile">Удалить</button>
+    }
 </div>
 
 @code {
     private Profile NewProfile { get; set; } = new Profile();
     private string InterestsInput { get; set; } = string.Empty;
+    private bool IsProfileCreated { get; set; } = false;
+    private int? CreatedProfileId { get; set; } = null;
+    private bool IsFirstRender { get; set; } = true;
+    private string ErrorMessage { get; set; } = string.Empty; // Добавляем объявление переменной
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            IsFirstRender = false;
+
+            // Проверяем, есть ли сохраненный ID профиля в localStorage
+            var savedProfileId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "createdProfileId");
+            if (!string.IsNullOrEmpty(savedProfileId) && int.TryParse(savedProfileId, out var profileId))
+            {
+                // Загружаем профиль по сохраненному ID
+                var profile = await ProfileService.GetProfileByIdAsync(profileId);
+                if (profile != null)
+                {
+                    NewProfile = profile;
+                    InterestsInput = string.Join(", ", profile.Interests.Select(i => i.SelectedInterestString));
+                    IsProfileCreated = true;
+                    CreatedProfileId = profileId;
+                }
+            }
+
+            // Перерисовываем компонент, чтобы отобразить загруженные данные
+            StateHasChanged();
+        }
+    }
 
     private async Task AddProfile()
     {
+        // Получаем все профили из базы данных
+        var allProfiles = await ProfileService.GetProfilesAsync();
+
+        // Проверяем, существует ли профиль с таким же именем
+        if (allProfiles.Any(p => p.Name == NewProfile.Name))
+        {
+            // Если профиль с таким именем уже существует, показываем сообщение об ошибке
+            ErrorMessage = "Профиль с таким именем уже существует!";
+            return;
+        }
+
+        // Сбрасываем сообщение об ошибке
+        ErrorMessage = string.Empty;
+
         // Преобразуем строку интересов в список
         NewProfile.Interests = InterestsInput
             .Split(',')
@@ -53,7 +108,47 @@
         // Добавляем профиль в базу данных
         await ProfileService.AddProfileAsync(NewProfile);
 
+        // Сохраняем ID созданного профиля в localStorage
+        CreatedProfileId = NewProfile.Id;
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "createdProfileId", CreatedProfileId.ToString());
+
+        // Устанавливаем флаг, что профиль создан
+        IsProfileCreated = true;
+    }
+
+    private async Task EditProfile()
+    {
+        // Преобразуем строку интересов в список
+        NewProfile.Interests = InterestsInput
+            .Split(',')
+            .Select(x => new Interests { SelectedInterestString = x.Trim() })
+            .ToList();
+
+        // Обновляем профиль в базе данных
+        await ProfileService.UpdateProfileAsync(NewProfile);
+
         // Перенаправляем пользователя на главную страницу
         NavigationManager.NavigateTo("/");
+    }
+
+    private async Task DeleteProfile()
+    {
+        if (CreatedProfileId.HasValue)
+        {
+            // Удаляем профиль из базы данных
+            await ProfileService.DeleteProfileAsync(CreatedProfileId.Value);
+
+            // Удаляем ID профиля из localStorage
+            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "createdProfileId");
+
+            // Сбрасываем состояние
+            NewProfile = new Profile();
+            InterestsInput = string.Empty;
+            IsProfileCreated = false;
+            CreatedProfileId = null;
+
+            // Перенаправляем пользователя на главную страницу
+            NavigationManager.NavigateTo("/");
+        }
     }
 }
