@@ -4,6 +4,7 @@ using DateSim.Data;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using DateSim.Data.Interfaces;
 
 namespace DateSim
 {
