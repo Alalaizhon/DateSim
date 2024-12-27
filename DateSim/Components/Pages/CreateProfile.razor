@@ -1,0 +1,59 @@
+﻿@page "/CreateProfile"
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
+@inject ProfileService ProfileService
+
+<PageTitle>Профиль</PageTitle>
+
+<h1>Добавить профиль</h1>
+
+<div class="profile-form">
+    <div class="form-group">
+        <label for="Name">Имя:</label>
+        <input id="Name" class="form-control" @bind="NewProfile.Name" />
+    </div>
+    <div class="form-group">
+        <label for="Age">Возраст:</label>
+        <input id="Age" type="number" class="form-control" @bind="NewProfile.Age" />
+    </div>
+    <div class="form-group">
+        <label for="Gender">Пол:</label>
+        <select id="Gender" class="form-control" @bind="NewProfile.Gender">
+            <option value="Мужской">Мужской</option>
+            <option value="Женский">Женский</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="Description">Описание:</label>
+        <textarea id="Description" class="form-control" @bind="NewProfile.Description"></textarea>
+    </div>
+    <div class="form-group">
+        <label for="ImageUrl">Ссылка на фото:</label>
+        <input id="ImageUrl" class="form-control" @bind="NewProfile.ImageUrl" />
+    </div>
+    <div class="form-group">
+        <label for="Interests">Интересы (через запятую):</label>
+        <input id="Interests" class="form-control" @bind="InterestsInput" />
+    </div>
+    <button class="btn btn-primary" @onclick="AddProfile">Добавить</button>
+</div>
+
+@code {
+    private Profile NewProfile { get; set; } = new Profile();
+    private string InterestsInput { get; set; } = string.Empty;
+
+    private async Task AddProfile()
+    {
+        // Преобразуем строку интересов в список
+        NewProfile.Interests = InterestsInput
+            .Split(',')
+            .Select(x => new Interests { SelectedInterestString = x.Trim() })
+            .ToList();
+
+        // Добавляем профиль в базу данных
+        await ProfileService.AddProfileAsync(NewProfile);
+
+        // Перенаправляем пользователя на главную страницу
+        NavigationManager.NavigateTo("/");
+    }
+}

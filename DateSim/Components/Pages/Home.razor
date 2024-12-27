@@ -30,7 +30,10 @@
                 </div>
                 <div class="profile-details">
                     <h2>@profile.Name</h2>
-                    <p>@profile.Description</p>
+                    <ul>
+                        <li>Возраст: @profile.Age</li>
+                        <li>Пол: @profile.Gender</li>
+                    </ul>
                     <h3>Интересы:</h3>
                     <ul>
                         @foreach (var interest in profile.Interests)
@@ -38,6 +41,7 @@
                             <li>@interest.SelectedInterestString</li>
                         }
                     </ul>
+                    <p>@profile.Description</p>
                 </div>
             </div>
         }
