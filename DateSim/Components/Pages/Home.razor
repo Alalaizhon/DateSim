@@ -1,201 +1,101 @@
-﻿ @page "/" 
- @rendermode InteractiveServer 
- @inject ProfileService data 
+﻿@page "/"
+@attribute [Authorize]
+@inject ProfileService ProfileService
+@rendermode InteractiveServer
 
- <h1 class="title">Симулятор свиданий</h1> 
- <div class="Cat-silly"></div> 
- <div class="Sit-kuromy"></div> 
- <!-- Кнопка для создания профиля --> 
- @if (!UserProfileCreated) // если профиль не создан 
- { 
-     <button class="btn btn-success create-profile-button" @onclick="ToggleForm">Создать свой профиль</button> // кнопка чтобы создать профиль  
- } 
+<h1 class="title">Симулятор свиданий</h1>
+<h3>Список Профилей</h3>
 
- <!-- Форма для создания собственного профиля --> 
- @if (ShowForm) 
- { 
+<div class="filter-container">
+    <label for="interest-filter">Фильтровать по интересам:</label>
+    <select id="interest-filter" @onchange="FilterProfiles">
+        <option value="all">Все интересы</option>
+        @foreach (var interest in GetAllInterests())
+        {
+            <option value="@interest">@interest</option>
+        }
+    </select>
+</div>
 
-     <div class="profile-form"> 
-         <h2>Создать свой профиль</h2> 
-         <div class="form-group"> 
-             <label for="Name">Имя:</label> 
-             <input id="Name" class="form-control" @bind="NewProfile.Name" />  
-         </div> 
-         <div class="form-group"> 
-             <label for="Description">Описание:</label> 
-             <textarea id="Description" class="form-control" @bind="NewProfile.Description"></textarea> 
-         </div> 
-         <div class="form-group"> 
-             <label for="Interests">Интересы (через запятую):</label> 
-             <input id="Interests" class="form-control" @bind="InterestInput" /> 
-         </div> 
-         <button class="btn btn-primary" @onclick="CreateUserProfile">Создать</button> 
-     </div> 
- } 
+<!-- Список профилей -->
+<h2 class="subtitle">Профили</h2>
+@if (FilteredProfiles.Any())
+{
+    <div class="profile-container">
+        @foreach (var profile in FilteredProfiles)
+        {
+            <div class="profile-card">
+                <div class="profile-image">
+                    <img src="@profile.ImageUrl" alt="@profile.Name" />
+                </div>
+                <div class="profile-details">
+                    <h2>@profile.Name</h2>
+                    <p>@profile.Description</p>
+                    <h3>Интересы:</h3>
+                    <ul>
+                        @foreach (var interest in profile.Interests)
+                        {
+                            <li>@interest.SelectedInterestString</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-info">Профили с выбранным интересом не найдены!</div>
+}
 
- <!-- Профиль пользователя --> 
- @if (UserProfileCreated) 
- { 
+@code
+{
+    // Список других профилей и фильтр
+    private List<Profile> FilteredProfiles { get; set; } = new List<Profile>();
+    private IEnumerable<Profile> Profiles = new List<Profile>();
+    private string CurrentFilter { get; set; } = "all";
 
-     <div class="Dance2"></div> 
-     <div class="user-profile"> 
-         <h3>Ваш профиль</h3> 
-         <div class="user-details"> 
-             <h4>@UserProfile.Name</h4> 
-             <p>@UserProfile.Description</p> 
-             <h5>Интересы:</h5> 
-             <ul> 
-                 @foreach (var interest in UserProfile.Interests) 
-                 { 
-                     <li>@interest</li> 
-                 } 
-             </ul> 
-         </div> 
-     </div> 
+    protected override void OnInitialized()
+    {
+        FilteredProfiles = Profiles.ToList(); // Инициализируем FilteredProfiles
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        Profiles = await ProfileService.GetProfilesAsync();
+       
+    }
 
-     <div class="filter-container"> 
-         <label for="interest-filter">Фильтровать по интересам:</label> 
-         <select id="interest-filter" @onchange="FilterProfiles"> 
-             <option value="all">Все интересы</option> 
-             @foreach (var interest in GetAllInterests()) 
-             { 
-                 <option value="@interest">@interest</option> 
-             } 
-         </select> 
-     </div> 
+    // Фильтрация профилей
+    private void FilterProfiles(ChangeEventArgs e)
+    {
+        var selectedInterest = e.Value?.ToString();
 
-     <!-- Список других профилей --> 
-     <h2 class="subtitle">Другие профили</h2> 
-     @if (FilteredProfiles.Any()) 
-     { 
-         <div class="profile-container"> 
-             @foreach (var profile in FilteredProfiles) 
-             { 
-                 <div class="profile-card"> 
-                     <div class="profile-image"> 
-                         <img src="@profile.ImageUrl" alt="@profile.Name" /> 
-                     </div> 
-                     <div class="profile-details"> 
-                         <h2>@profile.Name</h2> 
-                         <p>@profile.Description</p> 
-                         <h3>Интересы:</h3> 
-                         <ul> 
-                             @foreach (var interest in profile.Interests) 
-                             { 
-                                 <li>@interest</li> 
-                             } 
-                         </ul> 
-                     </div> 
-                     <div class="profile-actions"> 
-                         <button class="btn btn-primary" @onclick="() => HandleAction(profile, true)">Нравится</button> 
-                         <button class="btn btn-secondary" @onclick="() => HandleAction(profile, false)">Не нравится</button> 
-                     </div> 
-                 </div> 
-             } 
-         </div> 
-     } 
-     else 
-     { 
-         <div class="alert alert-info">Профили с выбранным интересом не найдены!</div> 
-     } 
- } 
+        if (selectedInterest == "all")
+        {
+            FilteredProfiles = Profiles.ToList(); // Показываем все профили
+        }
+        else
+        {
+            FilteredProfiles = Profiles
+                .Where(profile => profile.Interests.Any(interest => interest.SelectedInterestString == selectedInterest))
+                .ToList();
+        }
+    }
 
+    // Получаем уникальные строковые значения интересов
+    private IEnumerable<string> GetAllInterests()
+    {
+        if (Profiles == null)
+        {
+            return Enumerable.Empty<string>();
+        }
 
+        return Profiles
+            .SelectMany(profile => profile.Interests
+                .Where(i => !string.IsNullOrEmpty(i.SelectedInterestString))
+                .Select(i => i.SelectedInterestString!))
+            .Distinct();
 
- @code { 
-     // Состояние формы 
-     private bool ShowForm { get; set; } = false; 
-     private bool UserProfileCreated { get; set; } = false; 
-
-     // Новый профиль 
-     private Profile NewProfile { get; set; } = new Profile(); 
-     private string InterestInput { get; set; } = string.Empty; 
-     private string CurrentFilter { get; set; } = "all"; 
-
-     // Профиль пользователя 
-     private Profile UserProfile { get; set; } = new Profile(); 
-
-     // Список других профилей и фильтр 
-     private List<Profile> FilteredProfiles { get; set; } 
-     IEnumerable<Profile> Profiles; 
-
-     protected override OnInitialized()
-     { 
-         base.OnInitialized(); 
-         Profiles = data.GetProfile(); 
-     } 
-
-     // Метод для фильтра 
-     private void FilterProfiles(ChangeEventArgs e) 
-     { 
-         var selectedInterest = e.Value.ToString(); 
-
-         if (selectedInterest == "all") 
-         { 
-             FilteredProfiles = Profiles.ToList(); // Показываем оставшиеся профили  
-         } 
-         else 
-         { 
-             FilteredProfiles = Profiles 
-                 .Where(profile => profile.Interests.Contains(selectedInterest)) 
-                 .ToList(); 
-         } 
-     } 
-     // получаем уникальные интересы  
-     private IEnumerable<string> GetAllInterests() 
-     { 
-         return Profiles.SelectMany(profile => profile.Interests).Distinct(); 
-     } 
-
-     protected override void OnInitialized() 
-     { 
-         FilteredProfiles = Profiles.ToList(); 
-     } 
-
-     // Метод для переключения формы 
-     private void ToggleForm() 
-     { 
-         ShowForm = !ShowForm; 
-     } 
-
-     // Метод для создания профиля пользователя 
-     private void CreateUserProfile() 
-     { 
-         // Преобразуем строку интересов в список 
-         NewProfile.Interests = InterestInput.Split(',').Select(x => x.Trim()).ToList(); 
-
-         // Сохраняем профиль пользователя 
-         UserProfile = NewProfile; 
-         UserProfileCreated = true; 
-
-         // Скрываем форму 
-         ShowForm = false; 
-     } 
-
-     // Метод для обработки действий (нравится/не нравится) 
-     private void HandleAction(Profile profile, bool isLiked) 
-     { 
-         if (isLiked) 
-         { 
-             Console.WriteLine($"Вам понравился профиль {profile.Name}!"); 
-         } 
-         else 
-         { 
-             Console.WriteLine($"Вам не понравился профиль {profile.Name}!"); 
-         } 
-
-         // Удаляем профиль из списка 
-         Profiles.Remove(profile); 
-         //фильтр применяем еще разочек 
-         FilterProfiles(new ChangeEventArgs { Value = CurrentFilter }); 
-     } 
-
-     // Класс для профиля 
-     private class Profile 
-     { 
-         public string Name { get; set; } = string.Empty; 
-         public string Description { get; set; } = string.Empty; 
-         public List<string> Interests { get; set; } = new List<string>(); 
-         public string ImageUrl { get; set; } = string.Empty; 
-     } 
- } 
+    }
+    
+}

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using DateSim.Data.Interfaces;
+using DateSim.Data.Service;
 
 namespace DateSim
 {
@@ -41,6 +42,8 @@ namespace DateSim
 				.AddDefaultTokenProviders();
 
 			builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+			builder.Services.AddScoped<ProfileInterface, ProfileService>();
+			builder.Services.AddScoped<ProfileService>();
 
 			var app = builder.Build();
 
