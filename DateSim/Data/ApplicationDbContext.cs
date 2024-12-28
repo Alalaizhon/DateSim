@@ -1,3 +1,4 @@
+using DateSim.Data.Service;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection.Emit;
@@ -11,12 +12,25 @@ namespace DateSim.Data
 		{
 		}
 
+		public DbSet<AppStateData> AppStates { get; set; }
 		public DbSet<Profile> Profiles { get; set; }
 		public DbSet<Interests> Interests { get; set; }
+		public DbSet<Message> Messages { get; set; }
 		protected override void OnModelCreating(ModelBuilder builder)
 		{
 			base.OnModelCreating(builder);
 
+			builder.Entity<Message>()
+				.HasOne(m => m.Sender)
+				.WithMany()
+				.HasForeignKey(m => m.SenderId)
+				.OnDelete(DeleteBehavior.Restrict);
+
+			builder.Entity<Message>()
+				.HasOne(m => m.Receiver)
+				.WithMany()
+				.HasForeignKey(m => m.ReceiverId)
+				.OnDelete(DeleteBehavior.Restrict);
 			// Настройка связи один-ко-многим между Profile и Interests
 			builder.Entity<Profile>()
 				.HasMany(p => p.Interests) // У Profile может быть много Interests

@@ -3,10 +3,11 @@
 @inject NavigationManager NavigationManager
 @inject ProfileService ProfileService
 @inject IJSRuntime JSRuntime
+@inject AppState AppState
 
 <PageTitle>Профиль</PageTitle>
 
-<h1>Добавить профиль</h1>
+<h1>@(AppState.CurrentProfile != null ? "Редактировать профиль" : "Добавить профиль")</h1>
 
 @if (!string.IsNullOrEmpty(ErrorMessage))
 {
@@ -41,10 +42,9 @@
         <label for="Interests">Интересы (через запятую):</label>
         <input id="Interests" class="form-control" @bind="InterestsInput" />
     </div>
-    <button class="btn btn-primary" @onclick="AddProfile">Добавить</button>
-    @if (IsProfileCreated)
+    <button class="btn btn-primary" @onclick="SaveProfile">@(AppState.CurrentProfile != null ? "Сохранить" : "Добавить")</button>
+    @if (AppState.CurrentProfile != null)
     {
-        <button class="btn btn-secondary" @onclick="EditProfile">Редактировать</button>
         <button class="btn btn-danger" @onclick="DeleteProfile">Удалить</button>
     }
 </div>
@@ -52,71 +52,19 @@
 @code {
     private Profile NewProfile { get; set; } = new Profile();
     private string InterestsInput { get; set; } = string.Empty;
-    private bool IsProfileCreated { get; set; } = false;
-    private int? CreatedProfileId { get; set; } = null;
-    private bool IsFirstRender { get; set; } = true;
-    private string ErrorMessage { get; set; } = string.Empty; // Добавляем объявление переменной
+    private string ErrorMessage { get; set; } = string.Empty;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (firstRender)
+        if (AppState.CurrentProfile != null)
         {
-            IsFirstRender = false;
-
-            // Проверяем, есть ли сохраненный ID профиля в localStorage
-            var savedProfileId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "createdProfileId");
-            if (!string.IsNullOrEmpty(savedProfileId) && int.TryParse(savedProfileId, out var profileId))
-            {
-                // Загружаем профиль по сохраненному ID
-                var profile = await ProfileService.GetProfileByIdAsync(profileId);
-                if (profile != null)
-                {
-                    NewProfile = profile;
-                    InterestsInput = string.Join(", ", profile.Interests.Select(i => i.SelectedInterestString));
-                    IsProfileCreated = true;
-                    CreatedProfileId = profileId;
-                }
-            }
-
-            // Перерисовываем компонент, чтобы отобразить загруженные данные
-            StateHasChanged();
+            // Загружаем данные текущего профиля для редактирования
+            NewProfile = AppState.CurrentProfile;
+            InterestsInput = string.Join(", ", NewProfile.Interests.Select(i => i.SelectedInterestString));
         }
     }
 
-    private async Task AddProfile()
-    {
-        // Получаем все профили из базы данных
-        var allProfiles = await ProfileService.GetProfilesAsync();
-
-        // Проверяем, существует ли профиль с таким же именем
-        if (allProfiles.Any(p => p.Name == NewProfile.Name))
-        {
-            // Если профиль с таким именем уже существует, показываем сообщение об ошибке
-            ErrorMessage = "Профиль с таким именем уже существует!";
-            return;
-        }
-
-        // Сбрасываем сообщение об ошибке
-        ErrorMessage = string.Empty;
-
-        // Преобразуем строку интересов в список
-        NewProfile.Interests = InterestsInput
-            .Split(',')
-            .Select(x => new Interests { SelectedInterestString = x.Trim() })
-            .ToList();
-
-        // Добавляем профиль в базу данных
-        await ProfileService.AddProfileAsync(NewProfile);
-
-        // Сохраняем ID созданного профиля в localStorage
-        CreatedProfileId = NewProfile.Id;
-        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "createdProfileId", CreatedProfileId.ToString());
-
-        // Устанавливаем флаг, что профиль создан
-        IsProfileCreated = true;
-    }
-
-    private async Task EditProfile()
+    private async Task SaveProfile()
     {
         // Преобразуем строку интересов в список
         NewProfile.Interests = InterestsInput
@@ -124,30 +72,27 @@
             .Select(x => new Interests { SelectedInterestString = x.Trim() })
             .ToList();
 
-        // Обновляем профиль в базе данных
-        await ProfileService.UpdateProfileAsync(NewProfile);
+        if (AppState.CurrentProfile == null)
+        {
+            // Добавляем новый профиль
+            await ProfileService.AddProfileAsync(NewProfile);
+        }
+        else
+        {
+            // Обновляем существующий профиль
+            await ProfileService.UpdateProfileAsync(NewProfile);
+        }
 
-        // Перенаправляем пользователя на главную страницу
         NavigationManager.NavigateTo("/");
     }
 
     private async Task DeleteProfile()
     {
-        if (CreatedProfileId.HasValue)
+        if (AppState.CurrentProfile != null)
         {
-            // Удаляем профиль из базы данных
-            await ProfileService.DeleteProfileAsync(CreatedProfileId.Value);
-
-            // Удаляем ID профиля из localStorage
-            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "createdProfileId");
-
-            // Сбрасываем состояние
-            NewProfile = new Profile();
-            InterestsInput = string.Empty;
-            IsProfileCreated = false;
-            CreatedProfileId = null;
-
-            // Перенаправляем пользователя на главную страницу
+            // Удаляем профиль
+            await ProfileService.DeleteProfileAsync(AppState.CurrentProfile.Id);
+            await AppState.ClearCurrentProfileAsync();
             NavigationManager.NavigateTo("/");
         }
     }

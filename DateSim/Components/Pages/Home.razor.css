@@ -5,6 +5,28 @@
     padding: 0;
 }
 
+.login-container {
+    margin-bottom: 20px;
+}
+
+.login-container select {
+    padding: 5px;
+    margin-right: 10px;
+}
+
+.login-container button {
+    padding: 5px 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.login-container button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
 .title {
     text-align: center;
     color: #333;

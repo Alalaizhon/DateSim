@@ -1,13 +1,11 @@
-using DateSim.Components.Account;
+﻿using DateSim.Components.Account;
 using DateSim.Components;
-using DateSim.Data;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using DateSim.Data.Interfaces;
-using DateSim.Data.Service;
 
-namespace DateSim
+namespace DateSim.Data.Service
 {
 	public class Program
 	{
@@ -41,9 +39,11 @@ namespace DateSim
 				.AddSignInManager()
 				.AddDefaultTokenProviders();
 
-			builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+			builder.Services.AddScoped<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 			builder.Services.AddScoped<ProfileInterface, ProfileService>();
 			builder.Services.AddScoped<ProfileService>();
+			builder.Services.AddScoped<MessageService>();
+			builder.Services.AddScoped<AppState>();
 
 			var app = builder.Build();
 

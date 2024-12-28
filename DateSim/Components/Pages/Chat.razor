@@ -1,0 +1,94 @@
+﻿@page "/chat"
+@inject NavigationManager NavManager
+@inject ILogger<Chat> Logger
+@inject AppState AppState
+
+<h3>Чат</h3>
+
+@if (AppState.CurrentProfile != null)
+{
+    <p>Вы вошли как: @AppState.CurrentProfile.Name</p>
+
+    <!-- Окно чата -->
+    <div class="chat-window">
+        <div class="messages">
+            @foreach (var message in Messages)
+            {
+                <div class="message @(message.SenderId == AppState.CurrentProfile.Id.ToString() ? "sent" : "received")">
+                    <p>@message.Content</p>
+                    <small>@message.SentAt.ToLocalTime().ToString("HH:mm")</small>
+                </div>
+            }
+        </div>
+        <div class="message-input">
+            <input @bind="NewMessage" placeholder="Введите сообщение..." />
+            <button @onclick="SendMessage" class="btn btn-primary">Отправить</button>
+        </div>
+    </div>
+}
+else
+{
+    <p>Пожалуйста, войдите в профиль, чтобы начать чат.</p>
+    <button @onclick="NavigateToHome">Выбрать профиль</button>
+}
+
+@code {
+    private List<Message> Messages { get; set; } = new List<Message>();
+    private string NewMessage { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AppState != null) // Проверка на null
+        {
+            await AppState.LoadCurrentProfileAsync();
+        }
+        else
+        {
+            Logger.LogError("AppState is null"); // Логирование ошибки
+        }
+
+        if (AppState.CurrentProfile != null)
+        {
+            Logger.LogInformation("Текущий профиль: {ProfileName}", AppState.CurrentProfile.Name);
+        }
+        else
+        {
+            Logger.LogInformation("Текущий профиль не выбран");
+        }
+    }
+
+    private void NavigateToHome()
+    {
+        Logger.LogInformation("Переход на главную страницу");
+        NavManager.NavigateTo("/");
+    }
+
+    private void SendMessage()
+    {
+        Logger.LogInformation("Метод SendMessage вызван"); // Логирование
+        if (!string.IsNullOrWhiteSpace(NewMessage) && AppState.CurrentProfile != null)
+        {
+            // Создаем новое сообщение
+            var message = new Message
+                {
+                    SenderId = AppState.CurrentProfile.Id.ToString(),
+                    Content = NewMessage,
+                    SentAt = DateTime.UtcNow
+                };
+
+            // Добавляем сообщение в общий список
+            Messages.Add(message);
+            Logger.LogInformation("Сообщение добавлено: {Message}", NewMessage);
+
+            // Очищаем поле ввода
+            NewMessage = string.Empty;
+
+            // Обновляем интерфейс
+            StateHasChanged();
+        }
+        else
+        {
+            Logger.LogWarning("NewMessage пуст или AppState.CurrentProfile равен null"); // Логирование
+        }
+    }
+}

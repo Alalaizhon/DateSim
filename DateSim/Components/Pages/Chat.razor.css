@@ -1,0 +1,66 @@
+﻿.user-list {
+    width: 200px;
+    float: left;
+    margin-right: 20px;
+}
+
+    .user-list ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    .user-list button {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 5px;
+        background-color: #f1f1f1;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+    }
+
+        .user-list button:hover {
+            background-color: #ddd;
+        }
+
+.chat-window {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.messages {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.message {
+    margin-bottom: 10px;
+    padding: 5px;
+    border-radius: 5px;
+    max-width: 70%;
+}
+
+    .message.sent {
+        background-color: #007bff;
+        color: white;
+        margin-left: auto;
+    }
+
+    .message.received {
+        background-color: #f1f1f1;
+        color: black;
+        margin-right: auto;
+    }
+
+.message-input {
+    display: flex;
+}
+
+    .message-input input {
+        flex: 1;
+        margin-right: 10px;
+    }

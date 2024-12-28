@@ -1,7 +1,10 @@
 ﻿@page "/"
 @attribute [Authorize]
 @inject ProfileService ProfileService
+@inject AppState AppState
+@inject NavigationManager NavManager
 @rendermode InteractiveServer
+@inject ILogger<Chat> Logger
 
 <h1 class="title">Симулятор свиданий</h1>
 <h3>Список Профилей</h3>
@@ -22,6 +25,19 @@
             <option value="@interest">@interest</option>
         }
     </select>
+</div>
+
+<!-- Выбор профиля для входа -->
+<div class="login-container">
+    <label for="profile-select">Выберите профиль:</label>
+    <select id="profile-select" @bind="SelectedProfileId">
+        <option value="">Выберите профиль</option>
+        @foreach (var profile in FilteredProfiles)
+        {
+            <option value="@profile.Id">@profile.Name</option>
+        }
+    </select>
+    <button @onclick="Login" disabled="@(SelectedProfileId == null)">Войти в профиль</button>
 </div>
 
 <!-- Список профилей -->
@@ -59,13 +75,12 @@ else
     <div class="alert alert-info">Профили не найдены!</div>
 }
 
-@code
-{
-    // Список других профилей и фильтр
+@code {
     private List<Profile> FilteredProfiles { get; set; } = new List<Profile>();
     private IEnumerable<Profile> Profiles = new List<Profile>();
     private string CurrentFilter { get; set; } = "all";
     private string SearchQuery { get; set; } = string.Empty;
+    private int? SelectedProfileId { get; set; } = null;
 
     protected override void OnInitialized()
     {
@@ -75,10 +90,27 @@ else
     protected override async Task OnInitializedAsync()
     {
         Profiles = await ProfileService.GetProfilesAsync();
-        FilteredProfiles = Profiles.ToList(); // Обновляем FilteredProfiles после загрузки данных
+        if (Profiles != null) // Проверка на null
+        {
+            FilteredProfiles = Profiles.ToList(); // Обновляем FilteredProfiles после загрузки данных
+        }
     }
 
-    // Поиск профилей по имени
+    private async Task Login()
+    {
+        if (SelectedProfileId.HasValue)
+        {
+            var profile = Profiles.FirstOrDefault(p => p.Id == SelectedProfileId);
+            if (profile != null && AppState != null) // Проверка на null
+            {
+                Logger.LogInformation("Переход на чат"); // Логирование
+                await AppState.SetCurrentProfileAsync(profile); // Используем await
+                NavManager.NavigateTo("/chat");
+            }
+        }
+    }
+
+     // Поиск профилей по имени
     private async Task SearchProfiles()
     {
         if (string.IsNullOrWhiteSpace(SearchQuery))
